@@ -85,6 +85,8 @@ HTML_IMAGES = 				\
 	images/draped_box.png		\
 	images/exchange.png		\
 	images/fleur.png		\
+	images/gdkattachparams.png	\
+	images/gdkattachrule.png	\
 	images/gobbler.png		\
 	images/gumby.png		\
 	images/hand1.png		\
