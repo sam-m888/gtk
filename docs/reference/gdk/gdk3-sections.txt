@@ -379,6 +379,7 @@ gdk_window_get_pass_through
 gdk_window_move
 gdk_window_resize
 gdk_window_move_resize
+gdk_window_move_using_params
 gdk_window_scroll
 gdk_window_move_region
 gdk_window_flush

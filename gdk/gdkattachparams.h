@@ -74,7 +74,9 @@ typedef struct _GdkAttachParams GdkAttachParams;
  *             @params
  *
  * A function that can be used to receive information about the final position
- * of a window.
+ * of a window after gdk_window_move_using_params() is called. Since the
+ * position might be determined asynchronously, don't assume it will be called
+ * directly from gdk_window_move_using_params().
  *
  * Since: 3.20
  */
