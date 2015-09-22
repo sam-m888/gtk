@@ -9608,53 +9608,6 @@ popup_menu_detach (GtkWidget *attach_widget,
   priv_attach->popup_menu = NULL;
 }
 
-static void
-popup_position_func (GtkMenu   *menu,
-                     gint      *x,
-                     gint      *y,
-                     gboolean  *push_in,
-                     gpointer	user_data)
-{
-  GtkEntry *entry = GTK_ENTRY (user_data);
-  GtkEntryPrivate *priv = entry->priv;
-  GtkWidget *widget = GTK_WIDGET (entry);
-  GdkScreen *screen;
-  GtkRequisition menu_req;
-  GdkRectangle monitor;
-  gint monitor_num, strong_x, height;
- 
-  g_return_if_fail (gtk_widget_get_realized (widget));
-
-  gdk_window_get_origin (priv->text_area, x, y);
-
-  screen = gtk_widget_get_screen (widget);
-  monitor_num = gdk_screen_get_monitor_at_window (screen, priv->text_area);
-  if (monitor_num < 0)
-    monitor_num = 0;
-  gtk_menu_set_monitor (menu, monitor_num);
-
-  gdk_screen_get_monitor_workarea (screen, monitor_num, &monitor);
-  gtk_widget_get_preferred_size (priv->popup_menu,
-                                 &menu_req, NULL);
-  height = gdk_window_get_height (priv->text_area);
-  gtk_entry_get_cursor_locations (entry, CURSOR_STANDARD, &strong_x, NULL);
-
-  *x += 0 + strong_x - priv->scroll_offset;
-  if (gtk_widget_get_direction (widget) == GTK_TEXT_DIR_RTL)
-    *x -= menu_req.width;
-
-  if ((*y + height + menu_req.height) <= monitor.y + monitor.height)
-    *y += height;
-  else if ((*y - menu_req.height) >= monitor.y)
-    *y -= menu_req.height;
-  else if (monitor.y + monitor.height - (*y + height) > *y)
-    *y += height;
-  else
-    *y -= menu_req.height;
-
-  *push_in = FALSE;
-}
-
 typedef struct
 {
   GtkEntry *entry;
@@ -9678,6 +9631,9 @@ popup_targets_received (GtkClipboard     *clipboard,
       gboolean clipboard_contains_text;
       GtkWidget *menu;
       GtkWidget *menuitem;
+      GdkAttachParams *params;
+      GdkRectangle rectangle;
+      gint strong_x;
 
       clipboard_contains_text = gtk_selection_data_targets_include_text (data);
       if (info_entry_priv->popup_menu)
@@ -9722,14 +9678,47 @@ popup_targets_received (GtkClipboard     *clipboard,
       g_signal_emit (entry, signals[POPULATE_POPUP], 0, menu);
 
       if (info->device)
-	gtk_menu_popup_for_device (GTK_MENU (menu),
-                                   info->device, NULL, NULL, NULL, NULL, NULL,
-                                   info->button, info->time);
+        gtk_menu_popup_with_params (GTK_MENU (menu),
+                                    info->device,
+                                    NULL,
+                                    NULL,
+                                    info->button,
+                                    info->time,
+                                    TRUE,
+                                    GDK_WINDOW_TYPE_HINT_POPUP_MENU,
+                                    NULL);
       else
 	{
-          gtk_menu_popup (GTK_MENU (menu), NULL, NULL,
-                          popup_position_func, entry,
-                          0, gtk_get_current_event_time ());
+          params = gtk_menu_create_params (GTK_MENU (menu));
+
+          gtk_entry_get_cursor_locations (entry, CURSOR_STANDARD, &strong_x, NULL);
+          gdk_window_get_origin (info_entry_priv->text_area, &rectangle.x, &rectangle.y);
+          rectangle.x += strong_x - info_entry_priv->scroll_offset;
+          rectangle.width = 1;
+          rectangle.height = gdk_window_get_height (info_entry_priv->text_area);
+
+          gdk_attach_params_set_attach_rect (params, &rectangle);
+
+          gdk_attach_params_add_primary_rules (params,
+                                               GDK_ATTACH_AXIS_Y | GDK_ATTACH_RECT_MAX | GDK_ATTACH_WINDOW_MIN,
+                                               GDK_ATTACH_AXIS_Y | GDK_ATTACH_RECT_MIN | GDK_ATTACH_WINDOW_MAX,
+                                               NULL);
+
+          gdk_attach_params_add_secondary_rules (params,
+                                                 GDK_ATTACH_AXIS_X | GDK_ATTACH_RECT_MAX | GDK_ATTACH_WINDOW_MIN,
+                                                 GDK_ATTACH_AXIS_X | GDK_ATTACH_RECT_MIN | GDK_ATTACH_WINDOW_MAX,
+                                                 NULL);
+
+          gtk_menu_popup_with_params (GTK_MENU (menu),
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      0,
+                                      gtk_get_current_event_time (),
+                                      TRUE,
+                                      GDK_WINDOW_TYPE_HINT_POPUP_MENU,
+                                      params);
+
           gtk_menu_shell_select_first (GTK_MENU_SHELL (menu), FALSE);
 	}
     }
