@@ -9274,85 +9274,6 @@ popup_menu_detach (GtkWidget *attach_widget,
   GTK_TEXT_VIEW (attach_widget)->priv->popup_menu = NULL;
 }
 
-static void
-popup_position_func (GtkMenu   *menu,
-                     gint      *x,
-                     gint      *y,
-                     gboolean  *push_in,
-                     gpointer	user_data)
-{
-  GtkAllocation allocation;
-  GtkTextView *text_view;
-  GtkWidget *widget;
-  GdkRectangle cursor_rect;
-  GdkRectangle onscreen_rect;
-  gint root_x, root_y;
-  GtkTextIter iter;
-  GtkRequisition req;      
-  GdkScreen *screen;
-  gint monitor_num;
-  GdkRectangle monitor;
-      
-  text_view = GTK_TEXT_VIEW (user_data);
-  widget = GTK_WIDGET (text_view);
-  
-  g_return_if_fail (gtk_widget_get_realized (widget));
-  
-  screen = gtk_widget_get_screen (widget);
-
-  gdk_window_get_origin (gtk_widget_get_window (widget),
-                         &root_x, &root_y);
-
-  gtk_text_buffer_get_iter_at_mark (get_buffer (text_view),
-                                    &iter,
-                                    gtk_text_buffer_get_insert (get_buffer (text_view)));
-
-  gtk_text_view_get_iter_location (text_view,
-                                   &iter,
-                                   &cursor_rect);
-
-  gtk_text_view_get_visible_rect (text_view, &onscreen_rect);
-
-  gtk_widget_get_preferred_size (text_view->priv->popup_menu,
-                                 &req, NULL);
-
-  gtk_widget_get_allocation (widget, &allocation);
-
-  /* can't use rectangle_intersect since cursor rect can have 0 width */
-  if (cursor_rect.x >= onscreen_rect.x &&
-      cursor_rect.x < onscreen_rect.x + onscreen_rect.width &&
-      cursor_rect.y >= onscreen_rect.y &&
-      cursor_rect.y < onscreen_rect.y + onscreen_rect.height)
-    {    
-      gtk_text_view_buffer_to_window_coords (text_view,
-                                             GTK_TEXT_WINDOW_WIDGET,
-                                             cursor_rect.x, cursor_rect.y,
-                                             &cursor_rect.x, &cursor_rect.y);
-
-      *x = root_x + cursor_rect.x + cursor_rect.width;
-      *y = root_y + cursor_rect.y + cursor_rect.height;
-    }
-  else
-    {
-      /* Just center the menu, since cursor is offscreen. */
-      *x = root_x + (allocation.width / 2 - req.width / 2);
-      *y = root_y + (allocation.height / 2 - req.height / 2);
-    }
-
-  /* Ensure sanity */
-  *x = CLAMP (*x, root_x, (root_x + allocation.width));
-  *y = CLAMP (*y, root_y, (root_y + allocation.height));
-
-  monitor_num = gdk_screen_get_monitor_at_point (screen, *x, *y);
-  gtk_menu_set_monitor (menu, monitor_num);
-  gdk_screen_get_monitor_workarea (screen, monitor_num, &monitor);
-
-  *x = CLAMP (*x, monitor.x, monitor.x + MAX (0, monitor.width - req.width));
-  *y = CLAMP (*y, monitor.y, monitor.y + MAX (0, monitor.height - req.height));
-
-  *push_in = FALSE;
-}
-
 typedef struct
 {
   GtkTextView *text_view;
@@ -9402,6 +9323,10 @@ popup_targets_received (GtkClipboard     *clipboard,
       gboolean can_insert;
       GtkTextIter iter;
       GtkTextIter sel_start, sel_end;
+      GdkAttachParams *params;
+      GdkRectangle rectangle;
+      gint x;
+      gint y;
 
       clipboard_contains_text = gtk_selection_data_targets_include_text (data);
 
@@ -9460,14 +9385,55 @@ popup_targets_received (GtkClipboard     *clipboard,
 		     0, priv->popup_menu);
 
       if (info->device)
-	gtk_menu_popup_for_device (GTK_MENU (priv->popup_menu),
-                                   info->device, NULL, NULL, NULL, NULL, NULL,
-			           info->button, info->time);
+        gtk_menu_popup_with_params (GTK_MENU (priv->popup_menu),
+                                    info->device,
+                                    NULL,
+                                    NULL,
+                                    info->button,
+                                    info->time,
+                                    TRUE,
+                                    GDK_WINDOW_TYPE_HINT_POPUP_MENU,
+                                    NULL);
       else
 	{
-	  gtk_menu_popup (GTK_MENU (priv->popup_menu), NULL, NULL,
-			  popup_position_func, text_view,
-			  0, gtk_get_current_event_time ());
+          params = gtk_menu_create_params (GTK_MENU (priv->popup_menu));
+
+          gdk_window_get_origin (gtk_widget_get_window (GTK_WIDGET (text_view)), &x, &y);
+
+          gtk_text_view_get_iter_location (text_view,
+                                           &iter,
+                                           &rectangle);
+
+          gtk_text_view_buffer_to_window_coords (text_view,
+                                                 GTK_TEXT_WINDOW_WIDGET,
+                                                 rectangle.x,
+                                                 rectangle.y,
+                                                 &rectangle.x,
+                                                 &rectangle.y);
+
+          gdk_attach_params_set_attach_origin (params, x, y);
+          gdk_attach_params_set_attach_rect (params, &rectangle);
+
+          gdk_attach_params_add_primary_rules (params,
+                                               GDK_ATTACH_AXIS_Y | GDK_ATTACH_RECT_MAX | GDK_ATTACH_WINDOW_MIN,
+                                               GDK_ATTACH_AXIS_Y | GDK_ATTACH_RECT_MIN | GDK_ATTACH_WINDOW_MAX,
+                                               NULL);
+
+          gdk_attach_params_add_secondary_rules (params,
+                                                 GDK_ATTACH_AXIS_X | GDK_ATTACH_RECT_MAX | GDK_ATTACH_WINDOW_MIN,
+                                                 GDK_ATTACH_AXIS_X | GDK_ATTACH_RECT_MIN | GDK_ATTACH_WINDOW_MAX,
+                                                 NULL);
+
+          gtk_menu_popup_with_params (GTK_MENU (priv->popup_menu),
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      0,
+                                      gtk_get_current_event_time (),
+                                      TRUE,
+                                      GDK_WINDOW_TYPE_HINT_POPUP_MENU,
+                                      params);
+
 	  gtk_menu_shell_select_first (GTK_MENU_SHELL (priv->popup_menu), FALSE);
 	}
     }
