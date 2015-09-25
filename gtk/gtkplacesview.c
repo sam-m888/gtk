@@ -1694,13 +1694,15 @@ popup_menu (GtkPlacesViewRow *row,
       button = 0;
     }
 
-  gtk_menu_popup (GTK_MENU (priv->popup_menu),
-                  NULL,
-                  NULL,
-                  NULL,
-                  NULL,
-                  button,
-                  event ? event->time : gtk_get_current_event_time ());
+  gtk_menu_popup_with_params (GTK_MENU (priv->popup_menu),
+                              NULL,
+                              NULL,
+                              NULL,
+                              button,
+                              event ? event->time : gtk_get_current_event_time (),
+                              TRUE,
+                              GDK_WINDOW_TYPE_HINT_POPUP_MENU,
+                              NULL);
 }
 
 static gboolean
