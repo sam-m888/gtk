@@ -1422,40 +1422,6 @@ palette_set_color (GtkWidget         *drawing_area,
 }
 
 static void
-popup_position_func (GtkMenu   *menu,
-                     gint      *x,
-                     gint      *y,
-                     gboolean  *push_in,
-                     gpointer   user_data)
-{
-  GtkAllocation allocation;
-  GtkWidget *widget;
-  GtkRequisition req;
-  gint root_x, root_y;
-  GdkScreen *screen;
-
-  widget = GTK_WIDGET (user_data);
-
-  g_return_if_fail (gtk_widget_get_realized (widget));
-
-  gdk_window_get_origin (gtk_widget_get_window (widget),
-                         &root_x, &root_y);
-
-  gtk_widget_get_preferred_size (GTK_WIDGET (menu),
-                                 &req, NULL);
-  gtk_widget_get_allocation (widget, &allocation);
-
-  /* Put corner of menu centered on color cell */
-  *x = root_x + allocation.width / 2;
-  *y = root_y + allocation.height / 2;
-
-  /* Ensure sanity */
-  screen = gtk_widget_get_screen (widget);
-  *x = CLAMP (*x, 0, MAX (0, gdk_screen_get_width (screen) - req.width));
-  *y = CLAMP (*y, 0, MAX (0, gdk_screen_get_height (screen) - req.height));
-}
-
-static void
 save_color_selected (GtkWidget *menuitem,
                      gpointer   data)
 {
@@ -1480,6 +1446,7 @@ do_popup (GtkColorSelection *colorsel,
 {
   GtkWidget *menu;
   GtkWidget *mi;
+  GdkAttachParams *params;
 
   g_object_set_data (G_OBJECT (drawing_area),
                      I_("gtk-color-sel"),
@@ -1498,9 +1465,27 @@ do_popup (GtkColorSelection *colorsel,
 
   gtk_widget_show_all (mi);
 
-  gtk_menu_popup (GTK_MENU (menu), NULL, NULL,
-                  popup_position_func, drawing_area,
-                  3, timestamp);
+  params = gtk_menu_create_params (GTK_MENU (menu));
+
+  gdk_attach_params_add_primary_rules (params,
+                                       GDK_ATTACH_AXIS_Y | GDK_ATTACH_RECT_MID | GDK_ATTACH_WINDOW_MIN,
+                                       GDK_ATTACH_AXIS_Y | GDK_ATTACH_RECT_MID | GDK_ATTACH_WINDOW_MAX,
+                                       NULL);
+
+  gdk_attach_params_add_secondary_rules (params,
+                                         GDK_ATTACH_AXIS_X | GDK_ATTACH_RECT_MID | GDK_ATTACH_WINDOW_MIN,
+                                         GDK_ATTACH_AXIS_X | GDK_ATTACH_RECT_MID | GDK_ATTACH_WINDOW_MAX,
+                                         NULL);
+
+  gtk_menu_popup_with_params (GTK_MENU (menu),
+                              NULL,
+                              NULL,
+                              drawing_area,
+                              3,
+                              timestamp,
+                              TRUE,
+                              GDK_WINDOW_TYPE_HINT_POPUP_MENU,
+                              params);
 }
 
 
