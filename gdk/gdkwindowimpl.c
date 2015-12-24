@@ -27,7 +27,7 @@
 #include "gdkwindowimpl.h"
 
 #include "gdkinternals.h"
-
+#include "gdkattachparamsprivate.h"
 
 G_DEFINE_TYPE (GdkWindowImpl, gdk_window_impl, G_TYPE_OBJECT);
 
@@ -47,10 +47,18 @@ gdk_window_impl_process_updates_recurse (GdkWindow      *window,
 }
 
 static void
+gdk_window_impl_move_using_params (GdkWindow             *window,
+                                   const GdkAttachParams *params)
+{
+  gdk_attach_params_move_window (params, window);
+}
+
+static void
 gdk_window_impl_class_init (GdkWindowImplClass *impl_class)
 {
   impl_class->beep = gdk_window_impl_beep;
   impl_class->process_updates_recurse = gdk_window_impl_process_updates_recurse;
+  impl_class->move_using_params = gdk_window_impl_move_using_params;
 }
 
 static void
