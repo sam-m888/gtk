@@ -281,7 +281,8 @@ gdk_attach_params_set_window_offset (GdkAttachParams *params,
  * @destroy_notify: (nullable): a function to release @user_data
  *
  * Sets the function to be called when the final position of the window is
- * known.
+ * known. Since the position might be determined asynchronously, don't assume
+ * it will be called directly from gdk_window_move_using_params().
  *
  * Since: 3.20
  */
