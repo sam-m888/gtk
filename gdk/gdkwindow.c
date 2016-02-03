@@ -11512,6 +11512,11 @@ gdk_window_set_shadow_width (GdkWindow *window,
   g_return_if_fail (!GDK_WINDOW_DESTROYED (window));
   g_return_if_fail (left >= 0 && right >= 0 && top >= 0 && bottom >= 0);
 
+  window->top_shadow = top;
+  window->left_shadow = left;
+  window->right_shadow = right;
+  window->bottom_shadow = bottom;
+
   impl_class = GDK_WINDOW_IMPL_GET_CLASS (window->impl);
 
   if (impl_class->set_shadow_width)

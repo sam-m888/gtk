@@ -350,6 +350,11 @@ struct _GdkWindow
   gint abs_x, abs_y; /* Absolute offset in impl */
   gint width, height;
 
+  gint top_shadow;
+  gint left_shadow;
+  gint right_shadow;
+  gint bottom_shadow;
+
   guint num_offscreen_children;
 
   /* The clip region is the part of the window, in window coordinates
