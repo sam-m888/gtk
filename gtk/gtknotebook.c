@@ -2726,8 +2726,16 @@ gtk_notebook_button_press (GtkWidget      *widget,
 
   if (priv->menu && gdk_event_triggers_context_menu ((GdkEvent *) event))
     {
-      gtk_menu_popup (GTK_MENU (priv->menu), NULL, NULL,
-                      NULL, NULL, 3, event->time);
+      gtk_menu_popup_with_params (GTK_MENU (priv->menu),
+                                  NULL,
+                                  NULL,
+                                  NULL,
+                                  3,
+                                  event->time,
+                                  TRUE,
+                                  GDK_WINDOW_TYPE_HINT_POPUP_MENU,
+                                  NULL);
+
       return TRUE;
     }
 
@@ -2770,59 +2778,32 @@ gtk_notebook_button_press (GtkWidget      *widget,
   return TRUE;
 }
 
-static void
-popup_position_func (GtkMenu  *menu,
-                     gint     *x,
-                     gint     *y,
-                     gboolean *push_in,
-                     gpointer  data)
-{
-  GtkNotebook *notebook = data;
-  GtkNotebookPrivate *priv = notebook->priv;
-  GtkAllocation allocation;
-  GtkWidget *w;
-  GtkRequisition requisition;
-
-  if (priv->focus_tab)
-    {
-      GtkNotebookPage *page;
-
-      page = priv->focus_tab->data;
-      w = page->tab_label;
-    }
-  else
-   {
-     w = GTK_WIDGET (notebook);
-   }
-
-  gdk_window_get_origin (gtk_widget_get_window (w), x, y);
-
-  gtk_widget_get_allocation (w, &allocation);
-  gtk_widget_get_preferred_size (GTK_WIDGET (menu),
-                                 &requisition, NULL);
-
-  if (gtk_widget_get_direction (w) == GTK_TEXT_DIR_RTL)
-    *x += allocation.x + allocation.width - requisition.width;
-  else
-    *x += allocation.x;
-
-  *y += allocation.y + allocation.height;
-
-  *push_in = FALSE;
-}
-
 static gboolean
 gtk_notebook_popup_menu (GtkWidget *widget)
 {
   GtkNotebook *notebook = GTK_NOTEBOOK (widget);
   GtkNotebookPrivate *priv = notebook->priv;
+  GdkAttachParams *params;
 
   if (priv->menu)
     {
-      gtk_menu_popup (GTK_MENU (priv->menu), NULL, NULL,
-                      popup_position_func, notebook,
-                      0, gtk_get_current_event_time ());
+      params = gdk_attach_params_new ();
+
+      gdk_attach_params_set_anchors (params, GDK_ATTACH_BOTTOM_LEFT, GDK_ATTACH_TOP_LEFT);
+      gdk_attach_params_set_attach_hints (params, GDK_ATTACH_FLIP_TOP_BOTTOM);
+
+      gtk_menu_popup_with_params (GTK_MENU (priv->menu),
+                                  NULL,
+                                  NULL,
+                                  priv->focus_tab ? GTK_NOTEBOOK_PAGE (priv->focus_tab)->tab_label : GTK_WIDGET (notebook),
+                                  0,
+                                  gtk_get_current_event_time (),
+                                  TRUE,
+                                  GDK_WINDOW_TYPE_HINT_POPUP_MENU,
+                                  params);
+
       gtk_menu_shell_select_first (GTK_MENU_SHELL (priv->menu), FALSE);
+
       return TRUE;
     }
 
