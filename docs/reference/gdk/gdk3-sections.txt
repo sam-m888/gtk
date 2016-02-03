@@ -551,6 +551,28 @@ gdk_fullscreen_mode_get_type
 </SECTION>
 
 <SECTION>
+<TITLE>Attachment Parameters</TITLE>
+<FILE>gdkattachparams</FILE>
+GdkAttachParams
+GdkAttachAnchor
+GdkAttachHints
+gdk_attach_params_get_type
+gdk_attach_params_new
+gdk_attach_params_set_attach_rect
+gdk_attach_params_has_attach_rect
+gdk_attach_params_set_anchors
+gdk_attach_params_get_anchors
+gdk_attach_params_set_attach_hints
+gdk_attach_params_set_window_offset
+GdkAttachCallback
+gdk_attach_params_set_position_callback
+
+<SUBSECTION Private>
+_GdkAttachParams
+gdk_attach_params_default_move_window
+</SECTION>
+
+<SECTION>
 <TITLE>Selections</TITLE>
 <FILE>selections</FILE>
 GDK_SELECTION_PRIMARY

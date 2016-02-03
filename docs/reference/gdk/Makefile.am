@@ -60,6 +60,11 @@ HTML_IMAGES = 				\
 	images/rotated-text.png		\
 	images/X_cursor.png		\
 	images/arrow.png		\
+	images/attach-anchor.png	\
+	images/attach-flip-left-right.png	\
+	images/attach-flip-top-bottom.png	\
+	images/attach-menu.png		\
+	images/attach-params.png	\
 	images/based_arrow_down.png	\
 	images/based_arrow_up.png	\
 	images/boat.png			\
