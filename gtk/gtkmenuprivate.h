@@ -53,6 +53,9 @@ struct _GtkMenuPrivate
   gint                position_x;
   gint                position_y;
 
+  GdkAttachParams   *attach_params;
+  GdkWindowTypeHint  type_hint;
+
   guint toggle_size;
   guint accel_size;
 
