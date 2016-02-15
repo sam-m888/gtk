@@ -134,8 +134,7 @@ gdk_attach_params_new (void)
  * @parent: (not nullable): the #GdkWindow that @rectangle is relative to
  *
  * Sets the attachment rectangle the window needs to be aligned relative to.
- * The @rectangle should be in @parent's coordinate space, which means it
- * should account for the sizes of any client-side window decorations.
+ * The @rectangle should be in @parent's coordinate space.
  *
  * Since: 3.20
  */
