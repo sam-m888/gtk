@@ -1442,7 +1442,7 @@ save_color_selected (GtkWidget *menuitem,
 static void
 do_popup (GtkColorSelection *colorsel,
           GtkWidget         *drawing_area,
-          guint32            timestamp)
+          const GdkEvent    *event)
 {
   GtkWidget *menu;
   GtkWidget *mi;
@@ -1470,11 +1470,9 @@ do_popup (GtkColorSelection *colorsel,
   gdk_attach_params_set_anchors (params, GDK_ATTACH_CENTER, GDK_ATTACH_TOP_LEFT);
 
   gtk_menu_popup_with_params (GTK_MENU (menu),
-                              NULL,
+                              event,
                               NULL,
                               drawing_area,
-                              3,
-                              timestamp,
                               TRUE,
                               GDK_WINDOW_TYPE_HINT_POPUP_MENU,
                               params);
@@ -1506,17 +1504,17 @@ palette_leave (GtkWidget        *drawing_area,
 }
 
 static gboolean
-palette_press (GtkWidget      *drawing_area,
-               GdkEventButton *event,
-               gpointer        data)
+palette_press (GtkWidget *drawing_area,
+               GdkEvent  *event,
+               gpointer   data)
 {
   GtkColorSelection *colorsel = GTK_COLOR_SELECTION (data);
 
   gtk_widget_grab_focus (drawing_area);
 
-  if (gdk_event_triggers_context_menu ((GdkEvent *) event))
+  if (gdk_event_triggers_context_menu (event))
     {
-      do_popup (colorsel, drawing_area, event->time);
+      do_popup (colorsel, drawing_area, event);
       return TRUE;
     }
 
@@ -1615,8 +1613,12 @@ palette_popup (GtkWidget *widget,
                gpointer   data)
 {
   GtkColorSelection *colorsel = GTK_COLOR_SELECTION (data);
+  GdkEvent *event;
 
-  do_popup (colorsel, widget, GDK_CURRENT_TIME);
+  event = gtk_get_current_event ();
+  do_popup (colorsel, widget, event);
+  g_clear_pointer (&event, gdk_event_free);
+
   return TRUE;
 }
 
