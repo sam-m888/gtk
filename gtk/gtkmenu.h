@@ -166,11 +166,9 @@ void       gtk_menu_update_scroll_offset  (GdkWindow           *window,
 
 GDK_AVAILABLE_IN_3_20
 void       gtk_menu_popup_with_params     (GtkMenu             *menu,
-                                           GdkSeat             *seat,
+                                           const GdkEvent      *event,
                                            GtkWidget           *parent_menu_shell,
                                            GtkWidget           *attach_widget,
-                                           guint                button,
-                                           guint32              activate_time,
                                            gboolean             flip_if_rtl,
                                            GdkWindowTypeHint    type_hint,
                                            GdkAttachParams     *params);

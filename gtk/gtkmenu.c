@@ -1899,52 +1899,39 @@ flip_anchors_horizontally (GdkAttachParams *params)
 /**
  * gtk_menu_popup_with_params:
  * @menu: a #GtkMenu
- * @seat: (transfer none) (nullable): a #GdkSeat
+ * @event: (transfer none) (not nullable): the triggering #GdkEvent
  * @parent_menu_shell: (transfer none) (nullable): the menu shell containing
  *                     the triggering menu item or %NULL
  * @attach_widget: (transfer none) (nullable): the widget to attach @menu to
- * @button: the mouse button which was pressed to initiate the event
- * @activate_time: the time at which the activation event occurred
  * @flip_if_rtl: %TRUE if anchors should be flipped horizontally when the text
  *               direction is right-to-left
  * @type_hint: window type hint to use for the popup menu's top-level window
  * @params: (transfer floating) (nullable): a description of how to position
  *          @menu
  *
- * Displays a menu and makes it available for selection.
+ * Displays a menu and makes it available for selection. This function should
+ * only be called in response to a #GdkEvent, which should be passed in as
+ * @event.
  *
  * Applications can use this function to display context-sensitive menus,
  * and will typically supply %NULL for the @parent_menu_shell. The @menu will
  * be popped up relative to @param's attachment rectangle if it has one.
  * Otherwise it will appear relative to @attach_widget. If neither is
- * available, it will appear at the location of @seat's master pointer.
+ * available, it will appear at the location of the master pointer associated
+ * with @event.
  *
  * If @flip_if_rtl is %TRUE and the current text direction is right-to-left,
  * then both the attachment rectangle and window anchors in @params will be
  * horizontally flipped. For example, %GDK_ATTACH_TOP_LEFT will be replaced
  * with %GDK_ATTACH_TOP_RIGHT under a right-to-left locale.
  *
- * The @button parameter should be the mouse button pressed to initiate
- * the menu popup. If the menu popup was initiated by something other than
- * a mouse button press, such as a mouse button release or a key press,
- * @button should be 0.
- *
- * The @activate_time parameter is used to conflict-resolve initiation of
- * concurrent requests for mouse/keyboard grab requests. To function
- * properly, this needs to be the time stamp of the user event (such as
- * a mouse click or key press) that caused the initiation of the popup.
- * Only if no such event is available, gtk_get_current_event_time() can
- * be used instead.
- *
  * Since: 3.20
  */
 void
 gtk_menu_popup_with_params (GtkMenu           *menu,
-                            GdkSeat           *seat,
+                            const GdkEvent    *event,
                             GtkWidget         *parent_menu_shell,
                             GtkWidget         *attach_widget,
-                            guint              button,
-                            guint32            activate_time,
                             gboolean           flip_if_rtl,
                             GdkWindowTypeHint  type_hint,
                             GdkAttachParams   *params)
