@@ -223,20 +223,20 @@ popup_menu_detach (GtkWidget *attach_widget,
 }
 
 static gboolean
-widget_button_press_event_cb (GtkWidget      *widget,
-                              GdkEventButton *event,
-                              gpointer        user_data)
+widget_button_press_event_cb (GtkWidget *widget,
+                              GdkEvent  *event,
+                              gpointer   user_data)
 {
   GtkAppChooserWidget *self = user_data;
 
-  if (event->button == GDK_BUTTON_SECONDARY && event->type == GDK_BUTTON_PRESS)
+  if (event->type == GDK_BUTTON_PRESS && event->button.button == GDK_BUTTON_SECONDARY)
     {
       GAppInfo *info;
       GtkWidget *menu;
       GList *children;
       gint n_children;
 
-      info = get_app_info_for_event (self, event);
+      info = get_app_info_for_event (self, &event->button);
 
       if (info == NULL)
         return FALSE;
@@ -258,11 +258,9 @@ widget_button_press_event_cb (GtkWidget      *widget,
       if (n_children > 0)
         /* actually popup the menu */
         gtk_menu_popup_with_params (GTK_MENU (menu),
+                                    event,
                                     NULL,
                                     NULL,
-                                    NULL,
-                                    event->button,
-                                    event->time,
                                     TRUE,
                                     GDK_WINDOW_TYPE_HINT_POPUP_MENU,
                                     NULL);
