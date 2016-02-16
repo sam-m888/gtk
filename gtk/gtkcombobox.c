@@ -133,13 +133,13 @@ struct _GtkComboBoxPrivate
 
   GtkCssGadget *gadget;
 
+  GdkEvent *trigger_event;
+
   gulong inserted_id;
   gulong deleted_id;
   gulong reordered_id;
   gulong changed_id;
   guint popup_idle_id;
-  guint activate_button;
-  guint32 activate_time;
   guint scroll_timer;
   guint resize_idle_id;
 
@@ -373,7 +373,7 @@ static void     gtk_combo_box_menu_destroy         (GtkComboBox      *combo_box)
 
 
 static gboolean gtk_combo_box_menu_button_press    (GtkWidget        *widget,
-                                                    GdkEventButton   *event,
+                                                    GdkEvent         *event,
                                                     gpointer          user_data);
 static void     gtk_combo_box_menu_activate        (GtkWidget        *menu,
                                                     const gchar      *path,
@@ -383,8 +383,7 @@ static gboolean gtk_combo_box_menu_key_press       (GtkWidget        *widget,
                                                     GdkEventKey      *event,
                                                     gpointer          data);
 static void     gtk_combo_box_menu_popup           (GtkComboBox      *combo_box,
-                                                    guint             button,
-                                                    guint32           activate_time);
+                                                    const GdkEvent   *event);
 
 /* cell layout */
 static GtkCellArea *gtk_combo_box_cell_layout_get_area       (GtkCellLayout    *cell_layout);
@@ -2168,9 +2167,8 @@ update_menu_sensitivity (GtkComboBox *combo_box,
 }
 
 static void
-gtk_combo_box_menu_popup (GtkComboBox *combo_box,
-                          guint        button,
-                          guint32      activate_time)
+gtk_combo_box_menu_popup (GtkComboBox    *combo_box,
+                          const GdkEvent *event)
 {
   GtkComboBoxPrivate *priv = combo_box->priv;
   GtkTreePath *path;
@@ -2241,11 +2239,9 @@ gtk_combo_box_menu_popup (GtkComboBox *combo_box,
                                                g_object_unref);
 
       gtk_menu_popup_with_params (GTK_MENU (priv->popup_widget),
-                                  NULL,
+                                  event,
                                   NULL,
                                   attach_widget,
-                                  button,
-                                  activate_time,
                                   TRUE,
                                   GDK_WINDOW_TYPE_HINT_COMBO,
                                   params);
@@ -2290,11 +2286,9 @@ gtk_combo_box_menu_popup (GtkComboBox *combo_box,
                                                g_object_unref);
 
       gtk_menu_popup_with_params (GTK_MENU (priv->popup_widget),
+                                  event,
                                   NULL,
                                   NULL,
-                                  NULL,
-                                  button,
-                                  activate_time,
                                   TRUE,
                                   GDK_WINDOW_TYPE_HINT_COMBO,
                                   params);
@@ -2388,9 +2382,7 @@ gtk_combo_box_popup_for_device (GtkComboBox *combo_box,
 
   if (GTK_IS_MENU (priv->popup_widget))
     {
-      gtk_combo_box_menu_popup (combo_box,
-                                priv->activate_button,
-                                priv->activate_time);
+      gtk_combo_box_menu_popup (combo_box, priv->trigger_event);
       return;
     }
 
@@ -2872,21 +2864,21 @@ gtk_combo_box_menu_destroy (GtkComboBox *combo_box)
 
 /* callbacks */
 static gboolean
-gtk_combo_box_menu_button_press (GtkWidget      *widget,
-                                 GdkEventButton *event,
-                                 gpointer        user_data)
+gtk_combo_box_menu_button_press (GtkWidget *widget,
+                                 GdkEvent  *event,
+                                 gpointer   user_data)
 {
   GtkComboBox *combo_box = GTK_COMBO_BOX (user_data);
   GtkComboBoxPrivate *priv = combo_box->priv;
 
   if (GTK_IS_MENU (priv->popup_widget) &&
-      event->type == GDK_BUTTON_PRESS && event->button == GDK_BUTTON_PRIMARY)
+      event->type == GDK_BUTTON_PRESS && event->button.button == GDK_BUTTON_PRIMARY)
     {
       if (gtk_widget_get_focus_on_click (GTK_WIDGET (combo_box)) &&
           !gtk_widget_has_focus (priv->button))
         gtk_widget_grab_focus (priv->button);
 
-      gtk_combo_box_menu_popup (combo_box, event->button, event->time);
+      gtk_combo_box_menu_popup (combo_box, event);
 
       return TRUE;
     }
@@ -4508,9 +4500,8 @@ popup_idle (gpointer data)
                 NULL);
   gtk_combo_box_popup (combo_box);
 
+  g_clear_pointer (&priv->trigger_event, gdk_event_free);
   priv->popup_idle_id = 0;
-  priv->activate_button = 0;
-  priv->activate_time = 0;
 
   return FALSE;
 }
@@ -4553,10 +4544,8 @@ gtk_combo_box_start_editing (GtkCellEditable *cell_editable,
     {
       if (event && event->type == GDK_BUTTON_PRESS)
         {
-          GdkEventButton *event_button = (GdkEventButton *)event;
-
-          priv->activate_button = event_button->button;
-          priv->activate_time = event_button->time;
+          g_clear_pointer (&priv->trigger_event, gdk_event_free);
+          priv->trigger_event = gdk_event_copy (event);
         }
 
       priv->popup_idle_id =
