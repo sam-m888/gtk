@@ -245,9 +245,6 @@ popup_menu (GtkMenuButton *menu_button,
             GdkEvent      *event)
 {
   GtkMenuButtonPrivate *priv = menu_button->priv;
-  GdkSeat *seat;
-  guint button;
-  guint32 time;
   GdkWindowTypeHint type_hint;
   GdkAttachParams *params;
   GtkWidget *attach_widget;
@@ -257,20 +254,6 @@ popup_menu (GtkMenuButton *menu_button,
 
   if (!priv->menu)
     return;
-
-  if (event != NULL &&
-      gdk_event_get_screen (event) == gtk_widget_get_screen (GTK_WIDGET (menu_button)))
-    {
-      seat = gdk_event_get_seat (event);
-      gdk_event_get_button (event, &button);
-      time = gdk_event_get_time (event);
-    }
-  else
-    {
-      seat = NULL;
-      button = 0;
-      time = gtk_get_current_event_time ();
-    }
 
   params = gdk_attach_params_new ();
   attach_widget = GTK_WIDGET (menu_button);
@@ -385,11 +368,9 @@ popup_menu (GtkMenuButton *menu_button,
     }
 
   gtk_menu_popup_with_params (GTK_MENU (priv->menu),
-                              seat,
+                              event,
                               NULL,
                               attach_widget,
-                              button,
-                              time,
                               TRUE,
                               type_hint,
                               params);
