@@ -9424,9 +9424,7 @@ popup_menu_detach (GtkWidget *attach_widget,
 typedef struct
 {
   GtkEntry *entry;
-  guint button;
-  guint time;
-  GdkSeat *seat;
+  GdkEvent *event;
 } PopupInfo;
 
 static void
@@ -9436,6 +9434,7 @@ popup_targets_received (GtkClipboard     *clipboard,
 {
   PopupInfo *info = user_data;
   GtkEntry *entry = info->entry;
+  GdkEvent *event = info->event;
   GtkEntryPrivate *info_entry_priv = entry->priv;
 
   if (gtk_widget_get_realized (GTK_WIDGET (entry)))
@@ -9490,13 +9489,11 @@ popup_targets_received (GtkClipboard     *clipboard,
 
       g_signal_emit (entry, signals[POPULATE_POPUP], 0, menu);
 
-      if (info->seat)
+      if (gdk_event_triggers_context_menu (event))
         gtk_menu_popup_with_params (GTK_MENU (menu),
-                                    info->seat,
+                                    event,
                                     NULL,
                                     NULL,
-                                    info->button,
-                                    info->time,
                                     TRUE,
                                     GDK_WINDOW_TYPE_HINT_POPUP_MENU,
                                     NULL);
@@ -9514,11 +9511,9 @@ popup_targets_received (GtkClipboard     *clipboard,
           gdk_attach_params_set_anchors (params, GDK_ATTACH_BOTTOM_RIGHT, GDK_ATTACH_TOP_LEFT);
 
           gtk_menu_popup_with_params (GTK_MENU (menu),
+                                      event,
                                       NULL,
                                       NULL,
-                                      NULL,
-                                      0,
-                                      gtk_get_current_event_time (),
                                       TRUE,
                                       GDK_WINDOW_TYPE_HINT_POPUP_MENU,
                                       params);
@@ -9527,6 +9522,7 @@ popup_targets_received (GtkClipboard     *clipboard,
 	}
     }
 
+  g_clear_pointer (&event, gdk_event_free);
   g_object_unref (entry);
   g_slice_free (PopupInfo, info);
 }
@@ -9542,19 +9538,7 @@ gtk_entry_do_popup (GtkEntry       *entry,
    * we get them, then we actually pop up the menu.
    */
   info->entry = g_object_ref (entry);
-  
-  if (event)
-    {
-      gdk_event_get_button (event, &info->button);
-      info->time = gdk_event_get_time (event);
-      info->seat = gdk_event_get_seat (event);
-    }
-  else
-    {
-      info->button = 0;
-      info->time = gtk_get_current_event_time ();
-      info->seat = NULL;
-    }
+  info->event = event ? gdk_event_copy (event) : gtk_get_current_event ();
 
   gtk_clipboard_request_contents (gtk_widget_get_clipboard (GTK_WIDGET (entry), GDK_SELECTION_CLIPBOARD),
 				  gdk_atom_intern_static_string ("TARGETS"),
