@@ -511,7 +511,7 @@ static void gtk_label_move_cursor        (GtkLabel        *label,
 static void gtk_label_copy_clipboard     (GtkLabel        *label);
 static void gtk_label_select_all         (GtkLabel        *label);
 static void gtk_label_do_popup           (GtkLabel        *label,
-					  GdkEventButton  *event);
+					  const GdkEvent  *event);
 static gint gtk_label_move_forward_word  (GtkLabel        *label,
 					  gint             start);
 static gint gtk_label_move_backward_word (GtkLabel        *label,
@@ -4969,7 +4969,7 @@ gtk_label_multipress_gesture_pressed (GtkGestureMultiPress *gesture,
         {
           info->link_clicked = 1;
           update_link_state (label);
-          gtk_label_do_popup (label, (GdkEventButton*) event);
+          gtk_label_do_popup (label, event);
           return;
         }
       else if (button == GDK_BUTTON_PRIMARY)
@@ -4991,8 +4991,8 @@ gtk_label_multipress_gesture_pressed (GtkGestureMultiPress *gesture,
   info->in_drag = FALSE;
   info->select_words = FALSE;
 
-  if (gdk_event_triggers_context_menu ((GdkEvent *) event))
-    gtk_label_do_popup (label, (GdkEventButton*) event);
+  if (gdk_event_triggers_context_menu (event))
+    gtk_label_do_popup (label, event);
   else if (button == GDK_BUTTON_PRIMARY)
     {
       if (!gtk_widget_has_focus (widget))
@@ -6584,14 +6584,18 @@ copy_link_activate_cb (GtkMenuItem *menuitem,
 static gboolean
 gtk_label_popup_menu (GtkWidget *widget)
 {
-  gtk_label_do_popup (GTK_LABEL (widget), NULL);
+  GdkEvent *event;
+
+  event = gtk_get_current_event ();
+  gtk_label_do_popup (GTK_LABEL (widget), event);
+  g_clear_pointer (&event, gdk_event_free);
 
   return TRUE;
 }
 
 static void
 gtk_label_do_popup (GtkLabel       *label,
-                    GdkEventButton *event)
+                    const GdkEvent *event)
 {
   GtkLabelPrivate *priv = label->priv;
   GtkWidget *menuitem;
@@ -6615,7 +6619,7 @@ gtk_label_do_popup (GtkLabel       *label,
   have_selection =
     priv->select_info->selection_anchor != priv->select_info->selection_end;
 
-  if (event)
+  if (gdk_event_triggers_context_menu (event))
     {
       if (priv->select_info->link_clicked)
         link = priv->select_info->active_link;
@@ -6669,13 +6673,11 @@ gtk_label_do_popup (GtkLabel       *label,
 
   g_signal_emit (label, signals[POPULATE_POPUP], 0, menu);
 
-  if (event)
+  if (gdk_event_triggers_context_menu (event))
     gtk_menu_popup_with_params (GTK_MENU (menu),
+                                event,
                                 NULL,
                                 NULL,
-                                NULL,
-                                event->button,
-                                event->time,
                                 TRUE,
                                 GDK_WINDOW_TYPE_HINT_POPUP_MENU,
                                 NULL);
@@ -6687,11 +6689,9 @@ gtk_label_do_popup (GtkLabel       *label,
       gdk_attach_params_set_attach_hints (params, GDK_ATTACH_FLIP_TOP_BOTTOM);
 
       gtk_menu_popup_with_params (GTK_MENU (menu),
-                                  NULL,
+                                  event,
                                   NULL,
                                   GTK_WIDGET (label),
-                                  0,
-                                  gtk_get_current_event_time (),
                                   TRUE,
                                   GDK_WINDOW_TYPE_HINT_POPUP_MENU,
                                   params);
