@@ -1564,14 +1564,6 @@ gtk_menu_popup_internal (GtkMenu             *menu,
   GdkDevice *source_device = NULL;
   GdkDisplay *display;
 
-  if (params)
-    {
-      g_object_ref_sink (params);
-
-      if (!GTK_IS_MENU (menu) || (seat && !GDK_IS_SEAT (seat)))
-        g_clear_object (&params);
-    }
-
   g_return_if_fail (GTK_IS_MENU (menu));
   g_return_if_fail (!seat || GDK_IS_SEAT (seat));
 
@@ -1681,7 +1673,12 @@ gtk_menu_popup_internal (GtkMenu             *menu,
       menu_grab_transfer_window_destroy (menu);
 
       g_clear_object (&pointer);
-      g_clear_object (&params);
+
+      if (params)
+        {
+          g_object_ref_sink (params);
+          g_object_unref (params);
+        }
 
       return;
     }
@@ -1736,8 +1733,10 @@ gtk_menu_popup_internal (GtkMenu             *menu,
   priv->position_func_data_destroy = destroy;
   menu_shell->priv->activate_time = activate_time;
 
-  g_set_object (&priv->attach_params, params);
-  g_clear_object (&params);
+  g_clear_object (&priv->attach_params);
+
+  if (params)
+    priv->attach_params = g_object_ref_sink (params);
 
   /* We need to show the menu here rather in the init function
    * because code expects to be able to tell if the menu is onscreen
@@ -1943,12 +1942,6 @@ gtk_menu_popup_with_params (GtkMenu           *menu,
   GdkRectangle rectangle = { 0 };
   gint x;
   gint y;
-
-  if (!GTK_IS_MENU (menu) && params)
-    {
-      g_object_ref_sink (params);
-      g_clear_object (&params);
-    }
 
   g_return_if_fail (GTK_IS_MENU (menu));
 
