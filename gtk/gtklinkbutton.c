@@ -348,22 +348,9 @@ copy_activate_cb (GtkWidget     *widget,
 
 static void
 gtk_link_button_do_popup (GtkLinkButton  *link_button,
-			  GdkEventButton *event)
+			  const GdkEvent *event)
 {
   GtkLinkButtonPrivate *priv = link_button->priv;
-  gint button;
-  guint time;
-  
-  if (event)
-    {
-      button = event->button;
-      time = event->time;
-    }
-  else
-    {
-      button = 0;
-      time = gtk_get_current_event_time ();
-    }
 
   if (gtk_widget_get_realized (GTK_WIDGET (link_button)))
     {
@@ -387,13 +374,11 @@ gtk_link_button_do_popup (GtkLinkButton  *link_button,
       gtk_widget_show (menu_item);
       gtk_menu_shell_append (GTK_MENU_SHELL (priv->popup_menu), menu_item);
 
-      if (button)
+      if (gdk_event_triggers_context_menu (event))
         gtk_menu_popup_with_params (GTK_MENU (priv->popup_menu),
+                                    event,
                                     NULL,
                                     NULL,
-                                    NULL,
-                                    button,
-                                    time,
                                     TRUE,
                                     GDK_WINDOW_TYPE_HINT_POPUP_MENU,
                                     NULL);
@@ -405,11 +390,9 @@ gtk_link_button_do_popup (GtkLinkButton  *link_button,
           gdk_attach_params_set_attach_hints (params, GDK_ATTACH_FLIP_TOP_BOTTOM);
 
           gtk_menu_popup_with_params (GTK_MENU (priv->popup_menu),
-                                      NULL,
+                                      event,
                                       NULL,
                                       GTK_WIDGET (link_button),
-                                      button,
-                                      time,
                                       TRUE,
                                       GDK_WINDOW_TYPE_HINT_POPUP_MENU,
                                       params);
@@ -431,7 +414,7 @@ gtk_link_button_button_press (GtkWidget      *widget,
   if (gdk_event_triggers_context_menu ((GdkEvent *) event) &&
       GTK_LINK_BUTTON (widget)->priv->uri != NULL)
     {
-      gtk_link_button_do_popup (GTK_LINK_BUTTON (widget), event);
+      gtk_link_button_do_popup (GTK_LINK_BUTTON (widget), (GdkEvent *) event);
 
       return TRUE;
     }
@@ -481,7 +464,11 @@ gtk_link_button_clicked (GtkButton *button)
 static gboolean
 gtk_link_button_popup_menu (GtkWidget *widget)
 {
-  gtk_link_button_do_popup (GTK_LINK_BUTTON (widget), NULL);
+  GdkEvent *event;
+
+  event = gtk_get_current_event ();
+  gtk_link_button_do_popup (GTK_LINK_BUTTON (widget), event);
+  g_clear_pointer (&event, gdk_event_free);
 
   return TRUE; 
 }
