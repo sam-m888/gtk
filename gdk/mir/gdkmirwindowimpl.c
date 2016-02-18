@@ -1651,7 +1651,7 @@ gdk_mir_window_impl_move_using_params (GdkWindow       *window,
   MirEdgeAttachment edge;
   GdkRectangle rectangle;
 
-  if (!params || !gdk_attach_params_has_attach_rect (params))
+  if (!gdk_attach_params_has_attach_rect (params))
     {
       if (impl->has_attach_rect)
         {
