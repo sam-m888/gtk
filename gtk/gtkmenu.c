@@ -1567,6 +1567,9 @@ gtk_menu_popup_internal (GtkMenu             *menu,
   g_return_if_fail (GTK_IS_MENU (menu));
   g_return_if_fail (!seat || GDK_IS_SEAT (seat));
 
+  if (params)
+    g_object_ref_sink (params);
+
   if (!seat)
     {
       current_event = gtk_get_current_event ();
@@ -1673,12 +1676,7 @@ gtk_menu_popup_internal (GtkMenu             *menu,
       menu_grab_transfer_window_destroy (menu);
 
       g_clear_object (&pointer);
-
-      if (params)
-        {
-          g_object_ref_sink (params);
-          g_object_unref (params);
-        }
+      g_clear_object (&params);
 
       return;
     }
@@ -1734,9 +1732,7 @@ gtk_menu_popup_internal (GtkMenu             *menu,
   menu_shell->priv->activate_time = activate_time;
 
   g_clear_object (&priv->attach_params);
-
-  if (params)
-    priv->attach_params = g_object_ref_sink (params);
+  priv->attach_params = params;
 
   /* We need to show the menu here rather in the init function
    * because code expects to be able to tell if the menu is onscreen
