@@ -1567,12 +1567,12 @@ get_anchor_y (GdkAttachAnchor anchor)
 static MirEdgeAttachment
 get_attach_edge (GdkAttachParams *params)
 {
-  gint overlap_x;
-  gint overlap_y;
   gint x0;
   gint y0;
   gint x1;
   gint y1;
+  gint overlap_x;
+  gint overlap_y;
 
   if (params->attach_hints & GDK_ATTACH_FLIP_LEFT_RIGHT)
     {
