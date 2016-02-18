@@ -11558,7 +11558,7 @@ gdk_window_show_window_menu (GdkWindow *window,
 /**
  * gdk_window_move_using_params:
  * @window: a #GdkWindow
- * @params: (nullable): information for positioning @window
+ * @params: (not nullable): information for positioning @window
  *
  * Moves @window to the best position according to @params. The best position
  * is decided by the backend.
@@ -11572,6 +11572,7 @@ gdk_window_move_using_params (GdkWindow       *window,
   GdkWindowImplClass *impl_class;
 
   g_return_if_fail (GDK_IS_WINDOW (window));
+  g_return_if_fail (GDK_IS_ATTACH_PARAMS (params));
 
   impl_class = GDK_WINDOW_IMPL_GET_CLASS (window->impl);
 
