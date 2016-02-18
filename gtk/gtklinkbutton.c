@@ -348,7 +348,7 @@ copy_activate_cb (GtkWidget     *widget,
 
 static void
 gtk_link_button_do_popup (GtkLinkButton  *link_button,
-			  const GdkEvent *event)
+                          const GdkEvent *event)
 {
   GtkLinkButtonPrivate *priv = link_button->priv;
 
