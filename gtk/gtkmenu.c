@@ -1781,12 +1781,12 @@ get_arrows_border (GtkMenu   *menu,
                    GtkBorder *border)
 {
   GtkMenuPrivate *priv = menu->priv;
-  guint scroll_arrow_height;
   GtkArrowPlacement arrow_placement;
+  guint scroll_arrow_height;
 
   gtk_widget_style_get (GTK_WIDGET (menu),
-                        "scroll-arrow-vlength", &scroll_arrow_height,
                         "arrow_placement", &arrow_placement,
+                        "scroll-arrow-vlength", &scroll_arrow_height,
                         NULL);
 
   switch (arrow_placement)
@@ -1809,7 +1809,8 @@ get_arrows_border (GtkMenu   *menu,
       break;
     }
 
-  border->left = border->right = 0;
+  border->left = 0;
+  border->right = 0;
 }
 
 /**
@@ -1944,11 +1945,11 @@ gtk_menu_popup_with_params (GtkMenu           *menu,
                             GdkWindowTypeHint  type_hint,
                             GdkAttachParams   *params)
 {
+  GdkRectangle rectangle = { 0 };
+  GdkWindow *parent = NULL;
+  GdkEvent *current_event;
   GdkDisplay *display;
   GdkDevice *pointer;
-  GdkWindow *parent;
-  GdkEvent *current_event;
-  GdkRectangle rectangle = { 0 };
   gint x;
   gint y;
 
@@ -1963,8 +1964,6 @@ gtk_menu_popup_with_params (GtkMenu           *menu,
 
       if (!attach_widget)
         {
-          parent = NULL;
-
           if (!seat)
             {
               current_event = gtk_get_current_event ();
