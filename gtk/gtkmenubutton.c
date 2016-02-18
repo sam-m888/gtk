@@ -245,12 +245,12 @@ popup_menu (GtkMenuButton *menu_button,
             GdkEvent      *event)
 {
   GtkMenuButtonPrivate *priv = menu_button->priv;
+  GtkWidget *attach_widget = GTK_WIDGET (menu_button);
+  GdkWindowTypeHint type_hint;
+  GdkAttachParams *params;
   GdkSeat *seat;
   guint button;
   guint32 time;
-  GdkWindowTypeHint type_hint;
-  GdkAttachParams *params;
-  GtkWidget *attach_widget;
 
   if (priv->func)
     priv->func (priv->user_data);
@@ -273,7 +273,6 @@ popup_menu (GtkMenuButton *menu_button,
     }
 
   params = gdk_attach_params_new ();
-  attach_widget = GTK_WIDGET (menu_button);
 
   /* GTK_ALIGN_FILL and GTK_ALIGN_BASELINE are supposed to behave as
    * GTK_ALIGN_CENTER, but for backwards compatibility, we treat them as
