@@ -2622,7 +2622,7 @@ show_menu (GtkToolbar     *toolbar,
 	   GdkEventButton *event)
 {
   GtkToolbarPrivate *priv = toolbar->priv;
-  GdkAttachParams *params;
+  GdkAttachParams *params = gdk_attach_params_new ();
   GtkRequisition minimum_size;
   GtkAllocation allocation;
   GdkWindowTypeHint type_hint;
@@ -2630,9 +2630,6 @@ show_menu (GtkToolbar     *toolbar,
   rebuild_menu (toolbar);
 
   gtk_widget_show_all (GTK_WIDGET (priv->menu));
-
-  params = gdk_attach_params_new ();
-
   gtk_widget_realize (priv->arrow_button);
   gtk_widget_get_allocation (priv->arrow_button, &allocation);
 
