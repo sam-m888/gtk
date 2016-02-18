@@ -143,12 +143,25 @@ gdk_attach_params_set_attach_rect (GdkAttachParams    *params,
                                    const GdkRectangle *rectangle,
                                    GdkWindow          *parent)
 {
+  gint x;
+  gint y;
+
   g_return_if_fail (GDK_IS_ATTACH_PARAMS (params));
   g_return_if_fail (rectangle);
   g_return_if_fail (GDK_IS_WINDOW (parent));
 
   params->has_attach_rect = TRUE;
   params->attach_rect = *rectangle;
+
+  while (!gdk_window_has_native (parent) && gdk_window_get_effective_parent (parent))
+    {
+      gdk_window_get_position (parent, &x, &y);
+      params->attach_rect.x += x;
+      params->attach_rect.y += y;
+
+      parent = gdk_window_get_effective_parent (parent);
+    }
+
   g_set_object (&params->rect_parent, parent);
 }
 
