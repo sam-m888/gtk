@@ -229,7 +229,7 @@ widget_button_press_event_cb (GtkWidget *widget,
 {
   GtkAppChooserWidget *self = user_data;
 
-  if (event->type == GDK_BUTTON_PRESS && event->button.button == GDK_BUTTON_SECONDARY)
+  if (gdk_event_triggers_context_menu (event))
     {
       GAppInfo *info;
       GtkWidget *menu;
