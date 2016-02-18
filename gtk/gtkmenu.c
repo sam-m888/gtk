@@ -4554,20 +4554,22 @@ gtk_menu_position (GtkMenu  *menu,
    */
   gtk_widget_realize (priv->toplevel);
 
-  if (!gtk_widget_get_mapped (priv->toplevel) && priv->attach_params)
-    {
-      type_hint = priv->type_hint;
-
-      if (type_hint == GDK_WINDOW_TYPE_HINT_NORMAL)
-        type_hint = GDK_WINDOW_TYPE_HINT_POPUP_MENU;
-
-      gtk_window_set_type_hint (GTK_WINDOW (priv->toplevel), type_hint);
-    }
-
-  gdk_window_move_using_params (gtk_widget_get_window (priv->toplevel), priv->attach_params);
-
   if (priv->attach_params)
-    return;
+    {
+      if (!gtk_widget_get_mapped (priv->toplevel))
+        {
+          type_hint = priv->type_hint;
+
+          if (type_hint == GDK_WINDOW_TYPE_HINT_NORMAL)
+            type_hint = GDK_WINDOW_TYPE_HINT_POPUP_MENU;
+
+          gtk_window_set_type_hint (GTK_WINDOW (priv->toplevel), type_hint);
+        }
+
+      gdk_window_move_using_params (gtk_widget_get_window (priv->toplevel), priv->attach_params);
+
+      return;
+    }
 
   widget = GTK_WIDGET (menu);
 
