@@ -1946,7 +1946,7 @@ gtk_menu_item_real_popup_submenu (GtkWidget *widget,
   GtkMenuItem *menu_item = GTK_MENU_ITEM (widget);
   GtkMenuItemPrivate *priv = menu_item->priv;
   GtkWidget *parent = gtk_widget_get_parent (widget);
-  GdkWindowTypeHint type_hint;
+  GdkWindowTypeHint type_hint = GDK_WINDOW_TYPE_HINT_POPUP_MENU;
   GdkAttachParams *params;
   GtkMenu *parent_menu;
   GtkMenuItem *parent_menu_item;
@@ -2045,8 +2045,6 @@ gtk_menu_item_real_popup_submenu (GtkWidget *widget,
 
           if (GTK_IS_MENU_BAR (parent))
             type_hint = GDK_WINDOW_TYPE_HINT_DROPDOWN_MENU;
-          else
-            type_hint = GDK_WINDOW_TYPE_HINT_POPUP_MENU;
 
           gtk_menu_popup_with_params (GTK_MENU (priv->submenu),
                                       NULL,
@@ -2066,7 +2064,7 @@ gtk_menu_item_real_popup_submenu (GtkWidget *widget,
                                     GTK_MENU_SHELL (parent)->priv->button,
                                     0,
                                     TRUE,
-                                    GDK_WINDOW_TYPE_HINT_POPUP_MENU,
+                                    type_hint,
                                     NULL);
     }
 
