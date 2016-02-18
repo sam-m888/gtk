@@ -1935,18 +1935,21 @@ gtk_menu_popup_with_params (GtkMenu           *menu,
                             GdkWindowTypeHint  type_hint,
                             GdkAttachParams   *params)
 {
-  GdkDisplay *display;
+  GdkRectangle rectangle = { 0, 0, 1, 1 };
+  GdkEvent *current_event = NULL;
+  GdkSeat *seat;
   GdkDevice *pointer;
   GdkWindow *parent;
-  GdkEvent *current_event;
-  GdkRectangle rectangle = { 0 };
-  gint x;
-  gint y;
+  guint button;
 
   g_return_if_fail (GTK_IS_MENU (menu));
+  g_warn_if_fail (event);
 
-  if (seat)
-    g_object_ref (seat);
+  if (!event)
+    {
+      current_event = gtk_get_current_event ();
+      event = current_event;
+    }
 
   if (!params)
     {
@@ -1954,50 +1957,12 @@ gtk_menu_popup_with_params (GtkMenu           *menu,
 
       if (!attach_widget)
         {
-          parent = NULL;
-
-          if (!seat)
-            {
-              current_event = gtk_get_current_event ();
-
-              if (current_event)
-                {
-                  g_set_object (&seat, gdk_event_get_seat (current_event));
-                  g_set_object (&parent, gdk_event_get_window (current_event));
-                  gdk_event_free (current_event);
-                }
-            }
-
-          display = gtk_widget_get_display (GTK_WIDGET (menu));
-
-          if (seat && gdk_seat_get_display (seat) != display)
-            g_clear_object (&seat);
-
-          if (!seat)
-            g_set_object (&seat, gdk_display_get_default_seat (display));
-
+          seat = gdk_event_get_seat (event);
           pointer = gdk_seat_get_pointer (seat);
-
-          if (pointer)
-            {
-              gdk_device_get_position (pointer, NULL, &rectangle.x, &rectangle.y);
-              rectangle.width = 1;
-              rectangle.height = 1;
-
-              if (!parent)
-                parent = gdk_device_get_last_event_window (pointer);
-
-              if (parent)
-                {
-                  gdk_window_get_origin (parent, &x, &y);
-                  rectangle.x -= x;
-                  rectangle.y -= y;
-                }
-            }
+          parent = gdk_device_get_window_at_position (pointer, &rectangle.x, &rectangle.y);
 
           gdk_attach_params_set_attach_rect (params, &rectangle, parent);
           gdk_attach_params_set_anchors (params, GDK_ATTACH_BOTTOM_RIGHT, GDK_ATTACH_TOP_LEFT);
-          g_clear_object (&parent);
         }
     }
 
@@ -2013,6 +1978,9 @@ gtk_menu_popup_with_params (GtkMenu           *menu,
 
   menu->priv->type_hint = type_hint;
 
+  if (!gdk_event_get_button (event, &button))
+    button = 0;
+
   gtk_menu_popup_internal (menu,
                            seat,
                            parent_menu_shell,
@@ -2021,10 +1989,10 @@ gtk_menu_popup_with_params (GtkMenu           *menu,
                            NULL,
                            NULL,
                            button,
-                           activate_time,
+                           gdk_event_get_time (event),
                            params);
 
-  g_clear_object (&seat);
+  g_clear_pointer (&current_event, gdk_event_free);
 }
 
 /**
