@@ -2803,7 +2803,6 @@ gtk_notebook_popup_menu (GtkWidget *widget)
                                   params);
 
       gtk_menu_shell_select_first (GTK_MENU_SHELL (priv->menu), FALSE);
-
       return TRUE;
     }
 
