@@ -4567,7 +4567,6 @@ gtk_menu_position (GtkMenu  *menu,
         }
 
       gdk_window_move_using_params (gtk_widget_get_window (priv->toplevel), priv->attach_params);
-
       return;
     }
 
