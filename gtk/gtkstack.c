@@ -21,6 +21,8 @@
 
 #include "config.h"
 
+#include <graphene.h>
+#include <gsk/gsk.h>
 #include <gtk/gtk.h>
 #include "gtkstack.h"
 #include "gtkprivate.h"
@@ -155,6 +157,7 @@ typedef struct {
 
   GtkStackTransitionType active_transition_type;
 
+  GskRenderer *renderer;
 } GtkStackPrivate;
 
 static GParamSpec *stack_props[LAST_PROP] = { NULL, };
@@ -239,6 +242,7 @@ gtk_stack_finalize (GObject *obj)
     cairo_surface_destroy (priv->last_visible_surface);
 
   g_clear_object (&priv->gadget);
+  g_clear_object (&priv->renderer);
 
   G_OBJECT_CLASS (gtk_stack_parent_class)->finalize (obj);
 }
@@ -381,6 +385,11 @@ gtk_stack_realize (GtkWidget *widget)
     }
 
   gdk_window_show (priv->bin_window);
+
+  priv->renderer = gsk_renderer_get_for_display (gtk_widget_get_display (widget));
+  gsk_renderer_set_window (priv->renderer, priv->view_window);
+  gsk_renderer_set_use_alpha (priv->renderer, TRUE);
+  gsk_renderer_realize (priv->renderer);
 }
 
 static void
@@ -388,6 +397,8 @@ gtk_stack_unrealize (GtkWidget *widget)
 {
   GtkStack *stack = GTK_STACK (widget);
   GtkStackPrivate *priv = gtk_stack_get_instance_private (stack);
+
+  gsk_renderer_unrealize (priv->renderer);
 
   gtk_widget_unregister_window (widget, priv->bin_window);
   gdk_window_destroy (priv->bin_window);
@@ -2126,81 +2137,161 @@ gtk_stack_render (GtkCssGadget *gadget,
   GtkWidget *widget = gtk_css_gadget_get_owner (gadget);
   GtkStack *stack = GTK_STACK (widget);
   GtkStackPrivate *priv = gtk_stack_get_instance_private (stack);
+  GskRenderNode *root_node = NULL;
   cairo_t *pattern_cr;
+  cairo_t *draw_cr;
 
-  if (gtk_cairo_should_draw_window (cr, priv->view_window))
+  gsk_renderer_set_draw_context (priv->renderer, cr);
+
     {
       GtkStyleContext *context;
 
+      root_node = gsk_render_node_new ();
+      gsk_render_node_set_name (root_node, "Background");
+      gsk_render_node_set_bounds (root_node, &(graphene_rect_t) {
+                                    .origin.x = 0,
+                                    .origin.y = 0,
+                                    .size.width = gtk_widget_get_allocated_width (widget),
+                                    .size.height = gtk_widget_get_allocated_height (widget)
+                                  });
+      draw_cr = gsk_render_node_get_draw_context (root_node);
       context = gtk_widget_get_style_context (widget);
-      gtk_render_background (context,
-                             cr,
+      gtk_render_background (context, draw_cr,
                              0, 0,
                              gtk_widget_get_allocated_width (widget),
                              gtk_widget_get_allocated_height (widget));
+      cairo_destroy (draw_cr);
+
+      gsk_renderer_set_root_node (priv->renderer, root_node);
+      g_object_unref (root_node);
     }
 
   if (priv->visible_child)
     {
+      GskRenderNode *visible_node = NULL;
+
       if (gtk_progress_tracker_get_state (&priv->tracker) != GTK_PROGRESS_STATE_AFTER)
         {
-          if (priv->last_visible_surface == NULL &&
-              priv->last_visible_child != NULL)
+          gdouble progress = gtk_progress_tracker_get_progress (&priv->tracker, FALSE);
+          GskRenderNode *last_node = NULL;
+
+          if (priv->last_visible_child != NULL)
             {
               gtk_widget_get_allocation (priv->last_visible_child->widget,
                                          &priv->last_visible_surface_allocation);
-              priv->last_visible_surface =
-                gdk_window_create_similar_surface (gtk_widget_get_window (widget),
-                                                   CAIRO_CONTENT_COLOR_ALPHA,
-                                                   priv->last_visible_surface_allocation.width,
-                                                   priv->last_visible_surface_allocation.height);
-              pattern_cr = cairo_create (priv->last_visible_surface);
+
+              last_node = gsk_render_node_new ();
+              gsk_render_node_set_name (last_node, "LastVisibleChild");
+              gsk_render_node_set_bounds (last_node,
+                                          &(graphene_rect_t) {
+                                            .origin.x = 0,
+                                            .origin.y = 0,
+                                            .size.width = priv->last_visible_surface_allocation.width,
+                                            .size.height = priv->last_visible_surface_allocation.height
+                                          });
+
+              draw_cr = gsk_render_node_get_draw_context (last_node);
               /* We don't use propagate_draw here, because we don't want to apply
                * the bin_window offset
                */
-              gtk_widget_draw (priv->last_visible_child->widget, pattern_cr);
-              cairo_destroy (pattern_cr);
+              gtk_widget_draw (priv->last_visible_child->widget, draw_cr);
+              cairo_destroy (draw_cr);
+
+              gsk_render_node_insert_child_at_pos (root_node, last_node, -1);
+              g_object_unref (last_node);
             }
 
-          cairo_rectangle (cr,
-                           0, 0,
-                           gtk_widget_get_allocated_width (widget),
-                           gtk_widget_get_allocated_height (widget));
-          cairo_clip (cr);
+          visible_node = gsk_render_node_new ();
+          gsk_render_node_set_name (visible_node, "VisibleChild");
+          gsk_render_node_set_bounds (visible_node,
+                                      &(graphene_rect_t) {
+                                        .origin.x = 0,
+                                        .origin.y = 0,
+                                        .size.width = gtk_widget_get_allocated_width (priv->visible_child->widget),
+                                        .size.height = gtk_widget_get_allocated_height (priv->visible_child->widget)
+                                      });
+
+          draw_cr = gsk_render_node_get_draw_context (visible_node);
+          gtk_widget_draw (priv->visible_child->widget, draw_cr);
+          cairo_destroy (draw_cr);
+
+          gsk_render_node_insert_child_at_pos (root_node, visible_node, -1);
+          g_object_unref (visible_node);
 
           switch (priv->active_transition_type)
             {
             case GTK_STACK_TRANSITION_TYPE_CROSSFADE:
-	      if (gtk_cairo_should_draw_window (cr, priv->bin_window))
-		gtk_stack_draw_crossfade (widget, cr);
+              gsk_render_node_set_opacity (visible_node, progress);
+              gsk_render_node_set_opacity (last_node, 1 - progress);
               break;
+
             case GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT:
             case GTK_STACK_TRANSITION_TYPE_SLIDE_RIGHT:
             case GTK_STACK_TRANSITION_TYPE_SLIDE_UP:
             case GTK_STACK_TRANSITION_TYPE_SLIDE_DOWN:
+              {
+                graphene_matrix_t m;
+
+                if (priv->active_transition_type == GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT)
+                  graphene_matrix_init_translate (&m, &(graphene_point3d_t) { 1 - progress, 0, 0 });
+
+                if (priv->active_transition_type == GTK_STACK_TRANSITION_TYPE_SLIDE_RIGHT)
+                  graphene_matrix_init_translate (&m, &(graphene_point3d_t) { progress, 0, 0 });
+
+                if (priv->active_transition_type == GTK_STACK_TRANSITION_TYPE_SLIDE_UP)
+                  graphene_matrix_init_translate (&m, &(graphene_point3d_t) { 0, 1 - progress, 0 });
+
+                if (priv->active_transition_type == GTK_STACK_TRANSITION_TYPE_SLIDE_DOWN)
+                  graphene_matrix_init_translate (&m, &(graphene_point3d_t) { 0, progress, 0 });
+
+                gsk_render_node_set_transform (visible_node, &m);
+              }
+              break;
+
             case GTK_STACK_TRANSITION_TYPE_OVER_UP:
             case GTK_STACK_TRANSITION_TYPE_OVER_DOWN:
             case GTK_STACK_TRANSITION_TYPE_OVER_LEFT:
             case GTK_STACK_TRANSITION_TYPE_OVER_RIGHT:
-              gtk_stack_draw_slide (widget, cr);
+              gtk_stack_draw_slide (widget, draw_cr);
               break;
+
             case GTK_STACK_TRANSITION_TYPE_UNDER_UP:
             case GTK_STACK_TRANSITION_TYPE_UNDER_DOWN:
             case GTK_STACK_TRANSITION_TYPE_UNDER_LEFT:
             case GTK_STACK_TRANSITION_TYPE_UNDER_RIGHT:
 	      if (gtk_cairo_should_draw_window (cr, priv->bin_window))
-		gtk_stack_draw_under (widget, cr);
+		gtk_stack_draw_under (widget, draw_cr);
               break;
+
             default:
               g_assert_not_reached ();
             }
-
         }
-      else if (gtk_cairo_should_draw_window (cr, priv->bin_window))
-        gtk_container_propagate_draw (GTK_CONTAINER (stack),
-                                      priv->visible_child->widget,
-                                      cr);
+      else
+        {
+          visible_node = gsk_render_node_new ();
+          gsk_render_node_set_name (visible_node, "VisibleChild");
+          gsk_render_node_set_transform (visible_node, NULL);
+          gsk_render_node_set_opacity (visible_node, 1);
+          gsk_render_node_set_bounds (visible_node,
+                                      &(graphene_rect_t) {
+                                        .origin.x = 0,
+                                        .origin.y = 0,
+                                        .size.width = gtk_widget_get_allocated_width (priv->visible_child->widget),
+                                        .size.height = gtk_widget_get_allocated_height (priv->visible_child->widget)
+                                      });
+
+          draw_cr = gsk_render_node_get_draw_context (visible_node);
+          gtk_widget_draw (priv->visible_child->widget, draw_cr);
+          cairo_destroy (draw_cr);
+
+          gsk_render_node_insert_child_at_pos (root_node, visible_node, -1);
+          g_object_unref (visible_node);
+        }
     }
+
+  g_assert (root_node != NULL);
+  gsk_renderer_render (priv->renderer);
 
   return FALSE;
 }
@@ -2221,6 +2312,25 @@ gtk_stack_size_allocate (GtkWidget     *widget,
                            &clip);
 
   gtk_widget_set_clip (widget, &clip);
+
+  if (priv->renderer != NULL)
+    {
+      graphene_matrix_t ctm;
+
+      gsk_renderer_set_viewport (priv->renderer, &(graphene_rect_t) {
+                                   .origin.x = allocation->x,
+                                   .origin.y = allocation->y,
+                                   .size.width = allocation->width,
+                                   .size.height = allocation->height
+                                 });
+
+      graphene_matrix_init_translate (&ctm, &(graphene_point3d_t) {
+                                        allocation->x / allocation->width,
+                                        allocation->y / allocation->height,
+                                        0.f
+                                      });
+      gsk_renderer_set_modelview (priv->renderer, &ctm);
+    }
 }
 
 static void

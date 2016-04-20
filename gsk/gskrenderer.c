@@ -717,7 +717,6 @@ gsk_renderer_set_root_node (GskRenderer   *renderer,
   GskRenderNode *old_root;
 
   g_return_if_fail (GSK_IS_RENDERER (renderer));
-  g_return_if_fail (GSK_IS_RENDER_NODE (root));
 
   old_root = priv->root_node != NULL ? g_object_ref (priv->root_node) : NULL;
 
